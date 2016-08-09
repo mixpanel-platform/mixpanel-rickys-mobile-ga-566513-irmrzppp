@@ -1,15 +1,201 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
-    <meta charset="utf-8">
     <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/css/reset.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.css">
     <script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
   </head>
   <body class="mixpanel-platform-body">
-    <h1>Hello, World!</h1>
+    <div class="mixpanel-platform-section">
+      <div class="instructions">
+        <h1 style="font-size: 18px; color: rgb(95,105,131)">Campaign Dashboard</h1>
+      </div>
+      <div id="graph"></div>
+      <div id="table"></div>
+    </div>
     <script>
-      // Run queries and display results here
+     MP.api.ready(function() {
+        
+        // Events Data
+        var overallData = MP.api.events('Game Played', 'App Open', 'In-App Purchase', 'App Install', 'Registration Complete', {
+            from: moment().subtract(6, 'months'),
+            unit: 'week'
+        });
+        
+        $.when(overallData).done(function(overallData) { 
+          $('<span>' + "Events by Campaign Source" + '</span>').css({
+              'background': 'white',
+              'border': '1px solid #7a8195',
+              'border-radius': '5px',
+              'color': '#7a8195',
+              'display': 'inline-block',
+              'margin-bottom': '20px',
+              'margin-top': '10px',
+              'padding': '10px'            
+            }).appendTo('body');
+            
+          $('<div class="overallData"></div>').css({'width':'100%', 'float':'left'}).appendTo('body').MPChart({
+              chartType: 'line',
+              data: overallData
+          })
+          
+          var eventTable  = $('#table').css({'width':'100%', 'float':'left'}).appendTo('body').MPTable({
+            showPercentages: true,
+            firstColHeader: 'Event'
+          });
+          eventTable.MPTable('setData', overallData);
+        });
+        
+        
+        // Session Data
+        var sessionData = {}
+        var dataExported = MP.api.query('/api/2.0/segmentation/numeric/', {
+            from: moment().subtract(6, 'months'),
+            to: moment(),
+            event: 'Session End',
+            on: 'properties["Session Time"]',
+            unit: 'week'
+        }, {dataType:'json'})
+        .done(function(json) {
+          //console.log(json);
+        })
+        .fail(function($xhr) {
+          console.log('error with request', $xhr);
+        });
+        
+        $.when(dataExported).done(function(dataExtracted) {
+          var sessionData = dataExtracted["data"]["values"]
+          console.log(sessionData)
+
+          $('</div><br clear="all" /><span>' + "Session Time by Campaign Source" + '</span>').css({
+              'background': 'white',
+              'border': '1px solid #7a8195',
+              'border-radius': '5px',
+              'color': '#7a8195',
+              'display': 'inline-block',
+              'margin-bottom': '20px',
+              'margin-top': '10px',
+              'padding': '10px'            
+            }).appendTo('body');
+          
+          $('<div class="sessionData"></div>').css({'width':'100%', 'float':'left'}).appendTo('body').MPChart({
+              chartType: 'line',
+              data: sessionData
+          })
+          
+          $('<div class="sessionData"></div>').css({'width':'460px', 'float':'left'}).appendTo('body').MPChart({
+              chartType: 'bar',
+              data: sessionData
+          })
+          
+          $('<div class="sessionData"></div><br clear="all" />').css({'width':'460px', 'float':'right'}).appendTo('body').MPChart({
+              chartType: 'pie',
+              data: sessionData
+          })
+        });
+          
+          
+        // App Install Event by Campaign Source
+        event = 'App Install'
+      
+        var appInstall = MP.api.segment(event, 'Campaign Source', {
+            from: moment().subtract(6, 'months'),
+            unit: 'week'
+        });
+        
+        $.when(appInstall).done(function(appInstall) {
+          var appInstallData = appInstall.values()
+          
+          $('<span>' + "App Install Event by Campaign Source" + '</span>').css({
+            'background': 'white',
+            'border': '1px solid #7a8195',
+            'border-radius': '5px',
+            'color': '#7a8195',
+            'display': 'inline-block',
+            'margin-bottom': '20px',
+            'margin-top': '10px',
+            'padding': '10px'
+          }).appendTo('body');
+          
+          $('<div class="first"></div>').css({'width':'100%', 'float':'left'}).appendTo('body').MPChart({
+            chartType: 'line',
+            data: appInstallData
+          });
+                
+          $('<div class="second"></div>').css({'width':'460px', 'float':'left'}).appendTo('body').MPChart({
+              chartType: 'bar',
+              data: appInstallData
+          });
+                
+          $('<div class="third"></div><br clear="all" />').css({'width':'460px', 'float':'right'}).appendTo('body').MPChart({
+            chartType: 'pie',
+            data: appInstallData
+          });
+                
+          //$('.mixpanel-platform-multi_selector').css({'clear':'both'});
+          //$('.title').css({'width':'55px'});
+          $('.color_toggle_dropdown').each(function(){this.style.setProperty('width', '170px', 'important')});
+          $('.title').each(function(){this.style.setProperty('width', '105px', 'important')});
+        });
+        
+        
+        // Revenue Generated by Campaign Source
+        var revenueData = {}
+        var data = MP.api.query('/api/2.0/engage/revenue/', {
+            from: moment().subtract(6, 'months'),
+            to: moment(),
+            action: 'properties["Campaign Source"]',
+            unit: 'week'
+        }, {dataType:'json'})
+        .done(function(json) {
+          //console.log(json);
+        })
+        .fail(function($xhr) {
+          console.log('error with request', $xhr);
+        });
+        
+        $.when(data).done(function(dataExtracted) {
+          var campaigns = dataExtracted["results"]
+          
+          for (i = 0; i < 6; i++) {
+            var campaign = _.keys(campaigns)[i]  
+            revenueData[campaign] = {}
+            delete campaigns[campaign]['$overall']
+            
+            _.each(_.keys(campaigns[campaign]), function(hour){
+              var timeData = campaigns[campaign][hour]["amount"];
+              revenueData[campaign][hour] = timeData;
+            });
+          }
+          
+          $('<span>' + "Revenue Generated by Campaign Source" + '</span>').css({
+                  'background': 'white',
+                  'border': '1px solid #7a8195',
+                  'border-radius': '5px',
+                  'color': '#7a8195',
+                  'display': 'inline-block',
+                  'margin-bottom': '20px',
+                  'margin-top': '10px',
+                  'padding': '10px'            
+                }).appendTo('body');
+                
+          $('<div class="revenueData"></div>').css({'width':'100%','height':'450px', 'float':'left'}).appendTo('body').MPChart({
+                    chartType: 'line',
+                    data: revenueData
+          });
+          
+          $('<div class="revenueData"></div>').css({'width':'460px','height':'400px', 'float':'left'}).appendTo('body').MPChart({
+                    chartType: 'bar',
+                    data: revenueData
+          });
+          
+          $('<div class="revenueData"></div><br clear="all" />').css({'width':'460px','height':'400px', 'float':'right'}).appendTo('body').MPChart({
+                    chartType: 'pie',
+                    data: revenueData
+          });
+          
+        });
+     });
     </script>
   </body>
 </html>
